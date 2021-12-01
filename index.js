@@ -1,4 +1,5 @@
 const express = require("express");
+const bearerToken = require("express-bearer-token");
 let bodyParser = require("body-parser");
 const { v4: uuidv4 } = require("uuid");
 const app = express();
