@@ -1,27 +1,48 @@
 const express = require("express");
-const bearerToken = require("express-bearer-token");
 let bodyParser = require("body-parser");
 const { v4: uuidv4 } = require("uuid");
+var jwt = require("jsonwebtoken");
 const app = express();
 const port = 8000;
-app.use(bodyParser.json());
+const bearerToken = require("express-bearer-token");
+const JWTSECRET = "THISISMYSECRET";
 
+app.use(bodyParser.json());
+app.use(bearerToken());
 let humans = [];
 
 app.get("/", (req, res) => res.send("Merhaba Dünya!"));
 app.get("/humans", (req, res) => {
+  var tokenBody = verifyToken(req.token);
+  if (!tokenBody) {
+    res.statusCode = 401;
+    res.send("token is not valid");
+    return;
+  }
   res.json(humans);
 });
+
+app.post("/fakelogin", (req, res) => {
+  console.log("fake");
+  var token = jwt.sign({ id: 5 }, JWTSECRET);
+  res.send(token);
+});
 app.post("/createHuman", (req, res) => {
+  var tokenBody = verifyToken(req.token);
+  if (!tokenBody) {
+    res.statusCode = 401;
+    res.send("token is not valid");
+    return;
+  }
   let data = req.body;
   if (data.name === undefined || data.surname === undefined) {
-    res.status = 400;
+    res.statusCode = 400;
     res.send("data is wrong");
     return;
   }
   data.id = uuidv4();
   humans.push(data);
-  res.status = 201;
+  res.statusCode = 201;
   res.json(data);
 });
 app.get("/humans/:id", (req, res) => {
@@ -29,7 +50,7 @@ app.get("/humans/:id", (req, res) => {
   let id = req.params.id;
   let obj = humans.filter((e) => e.id === id);
   if (obj.length === 0) {
-    res.status = 400;
+    res.statusCode = 400;
     res.send("there is no one with that id");
     return;
   }
@@ -42,12 +63,12 @@ app.put("/humans/:id", (req, res) => {
   let index = humans.findIndex((e) => e.id === id);
   console.log("index:", index);
   if (index < 0) {
-    res.status = 400;
+    res.statusCode = 400;
     res.send("id is wrong");
     return;
   }
   if (data.name === undefined || data.surname === undefined) {
-    res.status = 400;
+    res.statusCode = 400;
     res.send("data is wrong");
     return;
   }
@@ -62,7 +83,7 @@ app.patch("/humans/:id", (req, res) => {
   let index = humans.findIndex((e) => e.id === id);
   console.log("index:", index);
   if (index < 0) {
-    res.status = 400;
+    res.statusCode = 400;
     res.send("id is wrong");
     return;
   }
@@ -77,12 +98,21 @@ app.delete("/humans/:id", (req, res) => {
   let index = humans.findIndex((e) => e.id === id);
   console.log("index:", index);
   if (index < 0) {
-    res.status = 400;
+    res.statusCode = 400;
     res.send("id is wrong");
     return;
   }
   humans.splice(index, 1);
-  res.status = 204;
+  res.statusCode = 204;
   res.send("deleted");
 });
 app.listen(port, () => console.log(`Example app listening on port ${port}!`));
+
+function verifyToken(token) {
+  try {
+    var decoded = jwt.verify(token, JWTSECRET);
+    return decoded;
+  } catch (error) {
+    return false;
+  }
+}
